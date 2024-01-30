@@ -3,7 +3,7 @@ breed [agents-C agent-C]
 breed [agents-D agent-D]
 
 turtles-own [payoff]
-globals [r beta gamma k]
+globals [k]
 
 
 to setup
@@ -11,9 +11,6 @@ to setup
  ; Imposta la dimensione della patch
 
   ; Imposta la lunghezza desiderata
-  set r 2
-  set beta 0.9
-  set gamma 0.05
   set k 4
 
   let new-width L ; change this to your desired width
@@ -46,11 +43,53 @@ to setup
   reset-ticks
 end
 
+to setup-test
+  clear-all
+ ; Imposta la dimensione della patch
+
+  ; Imposta la lunghezza desiderata
+  set r 2.0
+  set beta 0.9
+  set gamma 0.01
+  set k 4
+  set L 9
+
+  let new-width L ; change this to your desired width
+  let new-height L ; change this to your desired height
+
+  ; Resize the world
+  resize-world 0 new-width 0 new-height
+
+  ; Calcola il numero di agenti per ogni specie
+  let num-agents-per-species L * L / 3
+  ask patches [sprout-agents-RC 1 ]
+  ; Crea le specie di agenti
+  let total count turtles
+  ask n-of (total * 0.33) agents-RC [set breed agents-C]
+  ask n-of (total * 0.33) agents-RC [set breed agents-D]
+
+
+  ask agents-RC [
+    set color green
+    set pcolor green
+  ]
+  ask agents-C [
+    set color blue
+    set pcolor blue
+  ]
+    ask agents-D [
+    set color red
+    set pcolor red
+  ]
+
+  reset-ticks
+end
+
 to-report calculate-payoff [nRC nC nD my-breed]
   let this-payoff  1
   (ifelse
-    my-breed = agents-RC [set this-payoff R * (nC + nRC + 1) / (k + 1) - 1 + beta * nRC / k ]
-    my-breed = agents-C [set this-payoff R * (nC + nRC + 1) / (k + 1) - 1 + beta * nRC / k - gamma * (nC + nRC) / k]
+    my-breed = agents-C [set this-payoff R * (nC + nRC + 1) / (k + 1) - 1 + beta * nRC / k ]
+    my-breed = agents-RC [set this-payoff R * (nC + nRC + 1) / (k + 1) - 1 + beta * nRC / k - gamma * (nC + nRC) / k]
     my-breed = agents-D [set this-payoff R * (nC + nRC) / (k + 1) ]
     )
   report this-payoff
@@ -59,16 +98,17 @@ end
 to play-public-good [center update]
 ;  show center
   ask center [
-    let my-neighbors other turtles in-radius 1
+    let my-neighbors turtles in-radius 1
   ; Conta i vicini per ciascuna specie
     let count-RC count my-neighbors with [breed = agents-RC]
     let count-C count my-neighbors with [breed = agents-C]
     let count-D count my-neighbors with [breed = agents-D]
 
     ; Stampa i risultati
-    ; print (word "RC: " count-RC ", C: " count-C ", D: " count-D)
+    if debug[
+      print (word "RC: " count-RC ", C: " count-C ", D: " count-D " my breed " [breed] of update)]
 
-    let mybreed breed
+    let mybreed [breed] of update
     ;; aggiungi il payoff
     ask update [set payoff payoff + calculate-payoff count-RC count-C count-D mybreed]
   ]
@@ -93,7 +133,9 @@ to monte-carlo
       set neighbor-right one-of turtles-at 1 0
     ]
 
+
     ;; gioco public goods con X e i suoi vicini
+
 
     play-public-good X X
     play-public-good neighbor-up X
@@ -124,10 +166,10 @@ to monte-carlo
 
     let random-number random-float 1
     if random-number < q [
-      ask X [
-        set color [color] of Y
-        set breed [breed] of Y
-        set pcolor [pcolor] of Y
+      ask Y [
+        set color [color] of X
+        set breed [breed] of X
+        set pcolor [pcolor] of X
       ]
     ]
 
@@ -139,6 +181,50 @@ to go
   tick
 end
 
+;; Experiments
+
+to setup_io
+  file-close
+  file-open (word export_path r "_" beta "_" gamma ".txt")
+
+end
+
+to start_experiment
+  while [ticks < ticks_per_experiment] [
+  go
+  let rc count Agents-RC
+  let c count Agents-c
+  let d count Agents-D
+  let out (word rc "\t" c "\t" d)
+   file-print out
+
+  ]
+end
+
+;; test r [2-5] test beta[0-1.5] test gamma [0-0.2]
+
+to multiple_experiments
+  set r 2
+  set beta 0
+  set gamma 0
+
+  while[r < 5]
+  [
+    while [beta < 1.5][
+      while [gamma < 0.2][
+        setup_io
+        setup
+        start_experiment
+        set gamma gamma + 0.01
+      ]
+      set beta beta + 0.1
+    ]
+
+    set r r + 0.1
+
+  ]
+  file-close
+end
 
 ;;TESTS
 
@@ -161,37 +247,202 @@ to test-neighbors
 
 end
 
-
-to test-payoff
-  let test one-of turtles
-  let neighbor-up nobody
-  ask test [
-    set neighbor-up one-of other turtles-at 0 1
-    set pcolor white
-  ]
-
-  print (word "test " test " vicino su " neighbor-up)
-
-   play-public-good test test
-   play-public-good neighbor-up test
-
+to-report calc-payoff-d [nRC nC nD ]
+  let this-payoff  R * (nC + nRC) / (k + 1)
+  report this-payoff
+end
+to-report calc-payoff-c [nRC nC nD ]
+  let this-payoff  R * (nC + nRC + 1) / (k + 1) - 1 + beta * nRC / k
+  report this-payoff
+end
+to-report calc-payoff-g [nRC nC nD ]
+  report R * (nC + nRC + 1) / (k + 1) - 1 + beta * nRC / k - gamma * (nC + nRC) / k
 end
 
-to test-neighor
-  repeat L * L [
-    let test one-of turtles
-    ask test [ if count turtles-at 0 1 != 1 [print ("error")] ]
+to test-payoff-d
+  clear-output
+  let out 0
+  set out (out + calc-payoff-d 2 2 1)
+  show out
+  set out (out + calc-payoff-d 0 3 2)
+  show out
+  set out (out + calc-payoff-d 0 3 2)
+  show out
+  set out (out + calc-payoff-d 1 1 3)
+  show out
+  set out (out + calc-payoff-d 1 3 1)
+  show out
+end
+
+to test-payoff-c
+  clear-output
+  let out 0
+
+  set out (out + calc-payoff-c 3 2 0 )
+  show out
+  set out (out + calc-payoff-c 3 2 0)
+  show out
+  set out (out + calc-payoff-c 2 3 0)
+  show out
+  set out (out + calc-payoff-c 3 2 0)
+  show out
+  set out (out + calc-payoff-c 4 1 0)
+  show out
+end
+
+to test-payoff-g
+  clear-output
+  let out 0
+  set out (out + calc-payoff-g 2 2 1)
+  show out
+  set out (out + calc-payoff-g 0 3 2)
+  show out
+  set out (out + calc-payoff-g 0 3 2)
+  show out
+  set out (out + calc-payoff-g 1 1 3)
+  show out
+  set out (out + calc-payoff-c 1 3 1)
+  show out
+end
+
+
+to test-monte-carlo
+  repeat 5 [
+    let X one-of turtles
+
+
+    let neighbor-up nobody
+    let neighbor-down nobody
+    let neighbor-left nobody
+    let neighbor-right nobody
+
+    ;; prendo i vicini
+    ask X [
+      set payoff 0
+      set neighbor-up one-of turtles-at 0 1
+      set neighbor-down one-of turtles-at 0 -1
+      set neighbor-left one-of turtles-at -1 0
+      set neighbor-right one-of turtles-at 1 0
+    ]
+
+    ;; gioco public goods con X e i suoi vicini
+    print(word "X: " [breed] of X " at patch: " [xcor] of X " , " [ycor] of X)
+
+    play-public-good X X
+
+    print("playing with up neighbors")
+    play-public-good neighbor-up X
+    print("playing with down neighbors")
+    play-public-good neighbor-down X
+    print("playing with left neighbors")
+    play-public-good neighbor-left X
+    print("playing with right neighbors")
+    play-public-good neighbor-right X
+
+
+
+    ;; Y è uno dei vicini di X a caso
+
+    let Y one-of (list neighbor-up neighbor-down neighbor-left neighbor-right)
+    print(word "Y: " [breed] of Y " at patch: " [xcor] of Y " , " [ycor] of Y)
+    ask Y [
+      set payoff 0
+      set neighbor-up one-of turtles-at 0 1
+      set neighbor-down one-of turtles-at 0 -1
+      set neighbor-left one-of turtles-at -1 0
+      set neighbor-right one-of turtles-at 1 0
+    ]
+
+    play-public-good Y Y
+    print("playing with up neighbors")
+    play-public-good neighbor-up Y
+    print("playing with down neighbors")
+    play-public-good neighbor-down Y
+    print("playing with left neighbors")
+    play-public-good neighbor-left Y
+    print("playing with right neighbors")
+    play-public-good neighbor-right Y
+
+    let q 1 / (1 + exp(([payoff] of Y - [payoff] of X) / 0.5 ))
+    print(word "payoff of x: " [payoff] of X " payoff of Y: " [payoff] of Y " probability: " q)
+
   ]
+end
+
+to test-interaction
+  ask patch 78 14 [let X one-of turtles-at 0 0
+
+
+    let neighbor-up nobody
+    let neighbor-down nobody
+    let neighbor-left nobody
+    let neighbor-right nobody
+
+    ;; prendo i vicini
+    ask X [
+      set payoff 0
+      set neighbor-up one-of turtles-at 0 1
+      set neighbor-down one-of turtles-at 0 -1
+      set neighbor-left one-of turtles-at -1 0
+      set neighbor-right one-of turtles-at 1 0
+    ]
+
+    ;; gioco public goods con X e i suoi vicini
+    print(word "X: " [breed] of X " at patch: " [xcor] of X " , " [ycor] of X)
+
+    play-public-good X X
+    show [payoff] of x
+    play-public-good neighbor-up X
+    show [payoff] of x
+    play-public-good neighbor-down X
+    show [payoff] of x
+    play-public-good neighbor-left X
+    show [payoff] of x
+    play-public-good neighbor-right X
+    show [payoff] of x
+
+
+
+    ;; Y è uno dei vicini di X a caso
+
+    ask patch 78 13 [let Y one-of turtles-at 0 0
+    print(word "Y: " [breed] of Y " at patch: " [xcor] of Y " , " [ycor] of Y)
+    ask Y [
+      set payoff 0
+      set neighbor-up one-of turtles-at 0 1
+      set neighbor-down one-of turtles-at 0 -1
+      set neighbor-left one-of turtles-at -1 0
+      set neighbor-right one-of turtles-at 1 0
+    ]
+
+    play-public-good Y Y
+      show [payoff] of y
+    play-public-good neighbor-up Y
+      show [payoff] of y
+    play-public-good neighbor-down Y
+      show [payoff] of y
+    play-public-good neighbor-left Y
+      show [payoff] of y
+    play-public-good neighbor-right Y
+      show [payoff] of y
+
+    let q 1 / (1 + exp(([payoff] of Y - [payoff] of X) / 0.5 ))
+    print(word "payoff of x: " [payoff] of X " payoff of Y: " [payoff] of Y " probability: " q)
+]]
+end
+
+to test-calc-g
+  show calc-payoff-c 5 0 0
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+434
 10
-2333
-2134
+794
+371
 -1
 -1
-15.0
+2.5
 1
 10
 1
@@ -231,10 +482,10 @@ NIL
 BUTTON
 57
 194
-144
+167
 227
-test payoff
-test-payoff
+test interaction
+test-interaction
 NIL
 1
 T
@@ -276,6 +527,194 @@ L
 1
 NIL
 HORIZONTAL
+
+BUTTON
+38
+322
+132
+355
+testing time
+test-monte-carlo
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+CHOOSER
+269
+327
+407
+372
+debug
+debug
+false true
+0
+
+MONITOR
+1205
+18
+1308
+63
+Cooperators
+count agents-c
+17
+1
+11
+
+MONITOR
+1046
+19
+1186
+64
+rewarding cooperators
+count agents-RC
+17
+1
+11
+
+MONITOR
+930
+19
+1032
+64
+Defectors
+count agents-D
+17
+1
+11
+
+SLIDER
+998
+173
+1170
+206
+beta
+beta
+0
+1.5
+0.0
+0.1
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+1048
+109
+1203
+169
+R
+2.0
+1
+0
+Number
+
+SLIDER
+1193
+174
+1365
+207
+gamma
+gamma
+0
+0.2
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+PLOT
+906
+355
+1496
+499
+plot 1
+ticks
+percentage
+0.0
+100.0
+0.0
+1.0
+true
+true
+"" ""
+PENS
+"Rewarding cooperators" 1.0 0 -13840069 true "" "plot (count agents-RC / count turtles)"
+"Cooperators" 1.0 0 -13791810 true "" "plot (count agents-C / count turtles)"
+"Defectors" 1.0 0 -2674135 true "" "plot (count agents-D / count turtles)"
+
+BUTTON
+157
+287
+220
+320
+NIL
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+68
+405
+188
+438
+Start experiment
+multiple_experiments
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SWITCH
+914
+217
+1062
+250
+Experiment_end
+Experiment_end
+1
+1
+-1000
+
+INPUTBOX
+1247
+112
+1402
+172
+ticks_per_experiment
+1000.0
+1
+0
+Number
+
+INPUTBOX
+1122
+289
+1363
+349
+export_path
+C:\\\\Users\\\\Andrea\\\\Documents\\\\uni\\\\Magistrale\\\\Distributed artificial intelligence\\\\Progetto\\\\export\\\\
+1
+0
+String
 
 @#$#@#$#@
 ## WHAT IS IT?
