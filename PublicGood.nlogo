@@ -24,8 +24,8 @@ to setup
   ask patches [sprout-agents-RC 1 ]
   ; Crea le specie di agenti
   let total count turtles
-  ask n-of (total * 0.33) agents-RC [set breed agents-C]
-  ask n-of (total * 0.33) agents-RC [set breed agents-D]
+  ask n-of (num-agents-per-species) agents-RC [set breed agents-C]
+  ask n-of (num-agents-per-species) agents-RC [set breed agents-D]
 
   ask agents-RC [
     set color green
@@ -43,47 +43,6 @@ to setup
   reset-ticks
 end
 
-to setup-test
-  clear-all
- ; Imposta la dimensione della patch
-
-  ; Imposta la lunghezza desiderata
-  set r 2.0
-  set beta 0.9
-  set gamma 0.01
-  set k 4
-  set L 9
-
-  let new-width L ; change this to your desired width
-  let new-height L ; change this to your desired height
-
-  ; Resize the world
-  resize-world 0 new-width 0 new-height
-
-  ; Calcola il numero di agenti per ogni specie
-  let num-agents-per-species L * L / 3
-  ask patches [sprout-agents-RC 1 ]
-  ; Crea le specie di agenti
-  let total count turtles
-  ask n-of (total * 0.33) agents-RC [set breed agents-C]
-  ask n-of (total * 0.33) agents-RC [set breed agents-D]
-
-
-  ask agents-RC [
-    set color green
-    set pcolor green
-  ]
-  ask agents-C [
-    set color blue
-    set pcolor blue
-  ]
-    ask agents-D [
-    set color red
-    set pcolor red
-  ]
-
-  reset-ticks
-end
 
 to-report calculate-payoff [nRC nC nD my-breed]
   let this-payoff  1
@@ -98,7 +57,7 @@ end
 to play-public-good [center update]
 ;  show center
   ask center [
-    let my-neighbors turtles in-radius 1
+    let my-neighbors other turtles in-radius 1
   ; Conta i vicini per ciascuna specie
     let count-RC count my-neighbors with [breed = agents-RC]
     let count-C count my-neighbors with [breed = agents-C]
@@ -189,6 +148,9 @@ to setup_io
 
 end
 
+
+; GO WITH IO
+
 to start_experiment
   while [ticks < ticks_per_experiment] [
   go
@@ -201,30 +163,26 @@ to start_experiment
   ]
 end
 
-;; test r [2-5] test beta[0-1.5] test gamma [0-0.2]
-
+; test r [2-5] test beta[0-1.5] test gamma [0-0.2]
+; BATCHES
 to multiple_experiments
-  set r 2
+  set r 4.4
   set beta 0
   set gamma 0
-
-  while[r < 5]
-  [
     while [beta < 1.5][
       while [gamma < 0.2][
         setup_io
         setup
         start_experiment
-        set gamma gamma + 0.01
+        set gamma gamma + 0.03
       ]
-      set beta beta + 0.1
+      set beta beta + 0.3
     ]
-
-    set r r + 0.1
-
-  ]
   file-close
 end
+
+
+
 
 ;;TESTS
 
@@ -438,11 +396,11 @@ end
 GRAPHICS-WINDOW
 434
 10
-794
-371
+865
+442
 -1
 -1
-2.5
+3.0
 1
 10
 1
@@ -456,8 +414,8 @@ GRAPHICS-WINDOW
 140
 0
 140
-0
-0
+1
+1
 1
 ticks
 30.0
@@ -480,27 +438,10 @@ NIL
 1
 
 BUTTON
-57
-194
-167
-227
-test interaction
-test-interaction
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-82
-272
-145
-305
+96
+109
+159
+142
 go
 go
 T
@@ -528,28 +469,11 @@ L
 NIL
 HORIZONTAL
 
-BUTTON
-38
-322
-132
-355
-testing time
-test-monte-carlo
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 CHOOSER
-269
-327
-407
-372
+26
+188
+164
+233
 debug
 debug
 false true
@@ -609,7 +533,7 @@ INPUTBOX
 1203
 169
 R
-2.0
+3.5
 1
 0
 Number
@@ -623,7 +547,7 @@ gamma
 gamma
 0
 0.2
-0.0
+0.03
 0.01
 1
 NIL
@@ -650,10 +574,10 @@ PENS
 "Defectors" 1.0 0 -2674135 true "" "plot (count agents-D / count turtles)"
 
 BUTTON
-157
-287
-220
-320
+164
+110
+227
+143
 NIL
 go
 NIL
@@ -667,11 +591,11 @@ NIL
 1
 
 BUTTON
-68
-405
-188
-438
-Start experiment
+28
+249
+148
+282
+Start Batch
 multiple_experiments
 NIL
 1
@@ -711,7 +635,7 @@ INPUTBOX
 1363
 349
 export_path
-C:\\\\Users\\\\Andrea\\\\Documents\\\\uni\\\\Magistrale\\\\Distributed artificial intelligence\\\\Progetto\\\\export\\\\
+..\\
 1
 0
 String
