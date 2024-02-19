@@ -160,11 +160,21 @@ to start_experiment
   let out (word rc "\t" c "\t" d)
    file-print out
 
+    ; EARLY STOP MECHANISM
+
+  if ((rc = 0) and (c = 0)) or ((rc = 0) and (d = 0)) or ((d = 0) and (c = 0))
+    [
+      while [ticks < ticks_per_experiment] [
+      tick
+      file-print out
+      ]
+    ]
+
   ]
 end
 
 ; test r [2-5] test beta[0-1.5] test gamma [0-0.2]
-; BATCHES
+; MULTIPLE BATCHES
 to multiple_experiments
   set r 4.4
   set beta 0
